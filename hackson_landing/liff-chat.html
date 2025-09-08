@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LIFF Chat (AgentFlow)</title>
+  <title>LIFF Chat (Chatflow)</title>
   <style>
     :root { --bg:#f7f7f8; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#16a34a; }
     * { box-sizing: border-box; }
@@ -12,8 +12,6 @@
     #log { position: fixed; left:0; right:0; bottom:0; background:#e2e8f0; border-top:1px solid #cbd5e1; font-size:12px; padding:8px 12px; max-height:160px; overflow:auto; display:none; }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; }
     .btn.primary { background:var(--primary); color:#fff; border-color:#10b981; }
-    /* 讓聊天視窗固定出現在頁面中，不靠浮動泡泡 */
-    #chat-container { height: 100vh; max-width: 960px; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -22,24 +20,21 @@
     <div style="color:#374151; margin-bottom:10px;">先不登入也能聊，稍後隨時可登入以綁定你的紀錄。</div>
     <button id="loginBtn" class="btn primary">以 LINE 登入</button>
   </div>
-
-  <!-- 直接把聊天掛在這個容器裡 -->
-  <div id="chat-container"></div>
-
   <div id="log"></div>
 
   <script type="module">
     import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js";
 
-    // 可選：?liff=1 才啟用 LIFF
-    const LIFF_ID = "2007994605-MQ7wrXWZ";
+    // 可選：網址加 ?liff=1 才啟用 LIFF
+    const LIFF_ID   = "2007994605-MQ7wrXWZ";
     const enableLiff = new URLSearchParams(location.search).get("liff") === "1";
 
-    // 你的 AgentFlow 與 Flowise 服務
-    const AGENTFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";   // ← 換成你的 AgentFlow ID
-    const FLOWISE_API  = "https://cloud.flowiseai.com";             // ← 換成你的 Flowise URL
-    const API_KEY      = "qYVSf9woniu3lzX3fFd4mTEnzP1uSM-QrEkMxtv7820"; // 若有啟用 API Key 就填，否則設為 ""
+    // 你的 Chatflow / Flowise 設定
+    const AGENTFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";  // 這裡用 chatflowid
+    const FLOWISE_API  = "https://cloud.flowiseai.com";
+    const API_KEY      = "qYVSf9woniu3lzX3fFd4mTEnzP1uSM-QrEkMxtv7820"; // 若沒開 API Key 就留空 ""
 
+    // Debug 小面板（網址加 ?debug=1）
     const qs = new URLSearchParams(location.search);
     const showLog = qs.get("debug") === "1";
     const $log = document.getElementById("log");
@@ -53,16 +48,16 @@
     };
     window.onerror = (m, s, l, c) => log("window.onerror:", m, "@", s, l, c);
 
+    // 讀/存工具
     function pick(k){ return sessionStorage.getItem(k) || localStorage.getItem(k) || ""; }
     function put(k,v){ try{ sessionStorage.setItem(k,v); localStorage.setItem(k,v); }catch(e){} }
 
-    // 讀第一頁保存的 state
+    // 從第一頁帶來的狀態
     let mood    = pick("moodLabel") || pick("mood") || "🙂";
     let bot     = (pick("bot") || "").toLowerCase(); // "baobao" / "penny"
-    let user_id = pick("user_id");                   // 若第一頁/LIFF 有存，會帶到
+    let user_id = pick("user_id");
 
     function startFlowise(sessionId){
-      const container = document.getElementById("chat-container");
       const headers = {};
       if (API_KEY) headers["Authorization"] = "Bearer " + API_KEY;
 
@@ -77,45 +72,23 @@
         }
       };
 
-      const customVariables = { bot, mood, user_id };
-      const base = { apiHost: FLOWISE_API, theme, headers, chatflowConfig: { sessionId }, customVariables, container };
-
-      // 先嘗試 AgentFlow（新版）
-      log("initAgent ->", { agentId: AGENTFLOW_ID, ...base, customVariables });
-      let fallbackTimer = setTimeout(() => {
-        log("initAgent 看起來沒掛上，改用 chatflow 備援");
-        initFallback();
-      }, 1500); // 1.5s 看不到視窗就 fallback
-
-      try {
-        Chatbot.initAgent({ agentId: AGENTFLOW_ID, ...base });
-
-        // 若 1.5s 內出現了 iframe 或 flowise 的容器，就取消 fallback
-        const observer = new MutationObserver(() => {
-          if (container.querySelector("iframe") || container.querySelector(".flowise-chatbot")) {
-            clearTimeout(fallbackTimer);
-            observer.disconnect();
-            log("initAgent 成功");
-          }
-        });
-        observer.observe(container, { childList: true, subtree: true });
-      } catch (err) {
-        log("initAgent error:", err?.message || err);
-        clearTimeout(fallbackTimer);
-        initFallback(err);
-      }
-
-      function initFallback(reason){
-        log("fallback init ->", reason ? (reason.message || reason) : "no reason");
-        Chatbot.init({
-          chatflowid: AGENTFLOW_ID,   // 很多雲端環境仍用 chatflowid 也能載入 AgentFlow 對應的流程
-          ...base
-        });
-      }
+      // ★ 回到只有 Chatflow 的初始化（浮動小工具）
+      log("Chatbot.init", { chatflowid: AGENTFLOW_ID, apiHost: FLOWISE_API, sessionId, vars:{mood, bot, user_id} });
+      Chatbot.init({
+        chatflowid: AGENTFLOW_ID,
+        apiHost: FLOWISE_API,
+        theme,
+        chatflowConfig: {
+          sessionId,
+          variables: { mood, bot, user_id } // 這裡仍會把變數往後傳
+        },
+        headers
+      });
     }
 
     async function boot(){
       if (!enableLiff){
+        // 非 LIFF：沒有 user_id 就產生一個匿名 ID
         if (!user_id) {
           user_id = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
           put("user_id", user_id);
@@ -124,7 +97,7 @@
         return;
       }
 
-      // 動態載入 LIFF
+      // LIFF：動態載入並處理登入
       log("loading LIFF SDK...");
       const s = document.createElement("script");
       s.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
@@ -135,7 +108,7 @@
           if (liff.isLoggedIn()) {
             const profile = await liff.getProfile();
             user_id = profile.userId || user_id || "";
-            if (user_id) put("user_id", user_id);   // 覆寫成 LINE 的 userId
+            if (user_id) put("user_id", user_id);
             startFlowise(`line_${user_id || Date.now()}`);
           } else {
             if (!user_id) {
@@ -144,6 +117,7 @@
             }
             startFlowise(`anon_${user_id}`);
 
+            // 顯示登入提示
             const tip = document.getElementById("loginTip");
             const btn = document.getElementById("loginBtn");
             tip.style.display = "block";
@@ -173,3 +147,4 @@
   </script>
 </body>
 </html>
+
