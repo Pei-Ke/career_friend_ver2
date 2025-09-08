@@ -30,9 +30,9 @@
     const enableLiff = new URLSearchParams(location.search).get("liff") === "1";
 
     // 你的 AgentFlow 與 Flowise 服務
-    const AGENTFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";         // ← 換成你的 AgentFlow ID
-    const FLOWISE_API  = "https://cloud.flowiseai.com";
-    const API_KEY      = "qYVSf9woniu3lzX3fFd4mTEnzP1uSM-QrEkMxtv7820";                           // 若有啟用 API Key 就填
+    const AGENTFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";   // ← 換成你的 AgentFlow ID
+    const FLOWISE_API  = "https://cloud.flowiseai.com";             // ← 你的 Flowise 服務 URL
+    const API_KEY      = "qYVSf9woniu3lzX3fFd4mTEnzP1uSM-QrEkMxtv7820"; // 若有啟用 API Key 就填（沒有就留空字串）
 
     const qs = new URLSearchParams(location.search);
     const showLog = qs.get("debug") === "1";
@@ -52,8 +52,8 @@
 
     // 讀第一頁保存的 state
     let mood    = pick("moodLabel") || pick("mood") || "🙂";
-    let bot     = (pick("bot") || "").toLowerCase();
-    let user_id = pick("user_id");           // ← 新增
+    let bot     = (pick("bot") || "").toLowerCase(); // "baobao" / "penny"
+    let user_id = pick("user_id");                   // 若第一頁/LIFF 有存，會帶到
 
     function startFlowise(sessionId){
       const headers = {};
@@ -62,22 +62,29 @@
       const theme = {
         chatWindow: {
           title: `今天的心情 ${mood || ""}`.trim(),
-          welcomeMessage: mood ? `嗨，${user_id}， 我是${bot}，先記下你今天的心情 ${mood}。想從哪裡開始聊呢？` : "哈囉～今天想聊些什麼？",
+          welcomeMessage: mood
+            ? `嗨${user_id ? "，" + user_id : ""}，我是 ${bot || "助手"}。先記下你今天的心情：${mood}。想從哪裡開始聊呢？`
+            : "哈囉～今天想聊些什麼？",
           clearChatOnReload: false,
           renderHTML: true
         }
       };
 
-      log("Chatbot.init", { chatflowid: AGENTFLOW_ID, apiHost: FLOWISE_API, sessionId, vars:{mood, bot, user_id} });
-      Chatbot.init({
-        chatflowid: AGENTFLOW_ID,     // 即便是 AgentFlow，仍用 chatflowid 參數
-        apiHost: FLOWISE_API,
+      // ★ 使用 AgentFlow 的嵌入方法，並把變數放在 customVariables
+      log("Chatbot.initAgent", { agentId: AGENTFLOW_ID, apiHost: FLOWISE_API, sessionId, vars:{mood, bot, user_id} });
+      Chatbot.initAgent({
+        agentId:   AGENTFLOW_ID,
+        apiHost:   FLOWISE_API,
         theme,
+        headers,
         chatflowConfig: {
-          sessionId,
-          variables: { mood, bot, user_id }   // ← 帶給 AgentFlow
+          sessionId
         },
-        headers
+        customVariables: {
+          bot,
+          mood,
+          user_id
+        }
       });
     }
 
