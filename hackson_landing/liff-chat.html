@@ -3,19 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LIFF Chat (Lite)</title>
+  <title>LIFF Chat (AgentFlow)</title>
   <style>
     :root { --bg:#f7f7f8; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#16a34a; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC"; background:var(--bg); color:var(--text); }
-    #notice, #loginTip { max-width:720px; margin: 20px auto; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:none; }
+    #loginTip { max-width:720px; margin: 20px auto; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:none; }
     #log { position: fixed; left:0; right:0; bottom:0; background:#e2e8f0; border-top:1px solid #cbd5e1; font-size:12px; padding:8px 12px; max-height:160px; overflow:auto; display:none; }
     .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; }
     .btn.primary { background:var(--primary); color:#fff; border-color:#10b981; }
   </style>
 </head>
 <body>
-  <div id="notice"></div>
   <div id="loginTip">
     <div style="font-weight:600; margin-bottom:6px;">為了保存你的對話與偏好，建議登入 LINE</div>
     <div style="color:#374151; margin-bottom:10px;">先不登入也能聊，稍後隨時可登入以綁定你的紀錄。</div>
@@ -23,17 +22,17 @@
   </div>
   <div id="log"></div>
 
-  <!-- Flowise Embed（ES Module 版） -->
   <script type="module">
     import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js";
 
-    // ======= 可選 LIFF、預設不啟用 =======
-    const LIFF_ID = "2007994605-MQ7wrXWZ"; // 正確的 LIFF ID（僅當 ?liff=1 時會使用）
+    // 可選：?liff=1 才啟用 LIFF
+    const LIFF_ID = "2007994605-MQ7wrXWZ";
     const enableLiff = new URLSearchParams(location.search).get("liff") === "1";
-    // ====================================
 
-    const CHATFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";
-    const FLOWISE_API = "https://cloud.flowiseai.com";
+    // 你的 AgentFlow 與 Flowise 服務
+    const AGENTFLOW_ID = "10322e09-db98-49e6-b5f3-034cb5eb5b96";         // ← 換成你的 AgentFlow ID
+    const FLOWISE_API  = "https://cloud.flowiseai.com";
+    const API_KEY      = "qYVSf9woniu3lzX3fFd4mTEnzP1uSM-QrEkMxtv7820";                           // 若有啟用 API Key 就填
 
     const qs = new URLSearchParams(location.search);
     const showLog = qs.get("debug") === "1";
@@ -48,59 +47,52 @@
     };
     window.onerror = (m, s, l, c) => log("window.onerror:", m, "@", s, l, c);
 
-    function getState(){
-      let mood = localStorage.getItem("mood") || sessionStorage.getItem("mood") || "🙂";
-      let bot  = (localStorage.getItem("bot")  || sessionStorage.getItem("bot")  || "").toLowerCase();
-      try {
-        localStorage.setItem("mood", mood);
-        localStorage.setItem("bot", bot);
-        sessionStorage.setItem("mood", mood);
-        sessionStorage.setItem("bot", bot);
-      } catch (e) {}
-      return { mood, bot };
-    }
-    const state = getState();
-    log("state", state);
+    function pick(k){ return sessionStorage.getItem(k) || localStorage.getItem(k) || ""; }
+    function put(k,v){ try{ sessionStorage.setItem(k,v); localStorage.setItem(k,v); }catch(e){} }
 
-    const $notice = document.getElementById("notice");
-    if (state.bot && state.bot !== "baobao") {
-      $notice.style.display = "block";
-      $notice.innerHTML = `
-        <h3 style="margin:0 0 8px;">你選的是「裴妮」</h3>
-        <p style="margin:0 0 8px; color:#374151">目前只有「寶包」支援這個聊天頁。你可以：</p>
-        <ul style="margin:0 0 8px 20px; color:#374151">
-          <li>返回上一頁重新選擇「寶包」</li>
-          <li>或前往裴妮的專屬頁（之後可補連結）</li>
-        </ul>
-        <button id="back" class="btn">返回</button>
-      `;
-      document.getElementById("back").addEventListener("click", ()=>history.back());
-    }
+    // 讀第一頁保存的 state
+    let mood    = pick("moodLabel") || pick("mood") || "🙂";
+    let bot     = (pick("bot") || "").toLowerCase();
+    let user_id = pick("user_id");           // ← 新增
 
     function startFlowise(sessionId){
-      const opener = state.bot === "baobao";
-      if (!opener) return;
-      log("Chatbot.init", { chatflowid: CHATFLOW_ID, apiHost: FLOWISE_API, sessionId, mood: state.mood, enableLiff });
-      Chatbot.init({
-        chatflowid: CHATFLOW_ID,
-        apiHost: FLOWISE_API,
-        chatflowConfig: sessionId ? { sessionId } : {},
-        theme: {
-          chatWindow: {
-            title: `寶包 · 今天的心情 ${state.mood}`,
-            welcomeMessage: `先記下你今天的心情 ${state.mood} 。想從哪裡開始聊呢？`
-          }
+      const headers = {};
+      if (API_KEY) headers["Authorization"] = "Bearer " + API_KEY;
+
+      const theme = {
+        chatWindow: {
+          title: `今天的心情 ${mood || ""}`.trim(),
+          welcomeMessage: mood ? `先記下你今天的心情 ${mood}。想從哪裡開始聊呢？` : "哈囉～今天想聊些什麼？",
+          clearChatOnReload: false,
+          renderHTML: true
         }
+      };
+
+      log("Chatbot.init", { chatflowid: AGENTFLOW_ID, apiHost: FLOWISE_API, sessionId, vars:{mood, bot, user_id} });
+      Chatbot.init({
+        chatflowid: AGENTFLOW_ID,     // 即便是 AgentFlow，仍用 chatflowid 參數
+        apiHost: FLOWISE_API,
+        theme,
+        chatflowConfig: {
+          sessionId,
+          variables: { mood, bot, user_id }   // ← 帶給 AgentFlow
+        },
+        headers
       });
     }
 
     async function boot(){
       if (!enableLiff){
-        log("LIFF disabled (default). Running anonymous.");
-        startFlowise(`anon_${Date.now()}`);
+        // 無 LIFF：若沒有 user_id，就用本地生成的
+        if (!user_id) {
+          user_id = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
+          put("user_id", user_id);
+        }
+        startFlowise(`anon_${user_id}`);
         return;
       }
-      // 動態載入 LIFF SDK（只有在 ?liff=1 時）
+
+      // 動態載入 LIFF
       log("loading LIFF SDK...");
       const s = document.createElement("script");
       s.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
@@ -110,9 +102,18 @@
           await liff.init({ liffId: LIFF_ID });
           if (liff.isLoggedIn()) {
             const profile = await liff.getProfile();
-            startFlowise(`line_${profile.userId}`);
+            user_id = profile.userId || user_id || "";
+            if (user_id) put("user_id", user_id);   // 覆寫成 LINE 的 userId
+            startFlowise(`line_${user_id || Date.now()}`);
           } else {
-            startFlowise(`anon_${Date.now()}`);
+            // 未登入：仍用本地 user_id
+            if (!user_id) {
+              user_id = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
+              put("user_id", user_id);
+            }
+            startFlowise(`anon_${user_id}`);
+
+            // 顯示登入提示
             const tip = document.getElementById("loginTip");
             const btn = document.getElementById("loginBtn");
             tip.style.display = "block";
@@ -120,12 +121,20 @@
           }
         } catch (err) {
           log("LIFF init error:", err?.message || err);
-          startFlowise(`anon_${Date.now()}`);
+          if (!user_id) {
+            user_id = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
+            put("user_id", user_id);
+          }
+          startFlowise(`anon_${user_id}`);
         }
       };
       s.onerror = () => {
         log("LIFF SDK load error");
-        startFlowise(`anon_${Date.now()}`);
+        if (!user_id) {
+          user_id = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
+          put("user_id", user_id);
+        }
+        startFlowise(`anon_${user_id}`);
       };
       document.head.appendChild(s);
     }

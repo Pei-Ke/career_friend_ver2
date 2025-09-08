@@ -47,7 +47,6 @@
   <link rel="stylesheet" href="css/styles.css">
 
   <style>
-    /* 動態視口高度：避免 100vh 在 WebView 出錯；覆蓋 Tailwind 的 min-h-screen */
     :root { --app-vh: 100vh; }
     @supports (height: 100svh) { :root { --app-vh: 100svh; } }
     @supports (height: 100dvh) { :root { --app-vh: 100dvh; } }
@@ -55,14 +54,13 @@
     body { margin: 0; min-height: var(--app-vh); }
     body.min-h-screen { min-height: var(--app-vh) !important; }
 
-    /* 整塊一致的紫色毛玻璃（不用 ::before，避免蓋住內容） */
+    /* 整塊一致的紫色毛玻璃（不用 ::before） */
     #main-card {
       background:
         linear-gradient(0deg, rgba(124,58,237,0.12), rgba(124,58,237,0.12)),
         rgba(255,255,255,0.80);
     }
 
-    /* B 風格按鈕 */
     .mood-btn, .role-card {
       display:flex; align-items:center; gap:.75rem;
       padding:.875rem 1rem; background:rgba(255,255,255,.9);
@@ -72,14 +70,11 @@
     }
     .mood-btn:active, .role-card:active { transform: scale(.98); }
     .mood-btn.sel, .role-card.sel { outline:2px solid #7c3aed; background:#faf5ff; border-color:#e9d5ff; }
-
-    /* 最底那顆心情按鈕：半寬置中（與雙欄一格同寬） */
     .single-center { width: calc(50% - 0.5rem); margin-left:auto; margin-right:auto; }
   </style>
 </head>
 
 <body class="relative">
-  <!-- wrapper：用動態視口高度，穩定把卡片推到底 -->
   <div class="flex flex-col min-h-screen" style="min-height: var(--app-vh);">
 
     <!-- 背景元素 -->
@@ -92,10 +87,10 @@
       </button>
     </div>
 
-    <!-- 主要內容卡片（貼底 + 水平置中） -->
+    <!-- 主要內容卡片 -->
     <main id="main-card" class="mt-auto w-full max-w-md rounded-t-3xl backdrop-blur-xl shadow-2xl p-6 sm:p-10 z-10 transition-all duration-500 ease-in-out mx-auto">
       <div class="relative">
-        <!-- 步驟一: 選擇心情 -->
+        <!-- Step 1 -->
         <section id="mood-section" class="flex flex-col items-center">
           <div class="flex items-center justify-center gap-2 mb-2">
             <i class="ri-sun-line text-xl text-violet-700/80"></i>
@@ -109,7 +104,6 @@
               <button class="mood-btn" data-mood="good"><img class="w-12" src="img/happy.png" alt="good"><span class="font-medium text-slate-700">不錯</span></button>
             </div>
             <div class="grid grid-cols-2 gap-4">
-              <!-- 有空白的檔名先用 URL 編碼；上線建議把檔名改成 not-great.png -->
               <button class="mood-btn" data-mood="okay"><img class="w-12" src="img/not-great.png" alt="okay"><span class="font-medium text-slate-700">還好</span></button>
               <button class="mood-btn" data-mood="not-great"><img class="w-12" src="img/sad.png" alt="not great"><span class="font-medium text-slate-700">不太好</span></button>
             </div>
@@ -119,7 +113,7 @@
           </div>
         </section>
 
-        <!-- 步驟二: 選擇角色（改為「非 absolute」＋ hidden 切換，避免卡片高度塌陷） -->
+        <!-- Step 2（非 absolute，避免高度塌陷） -->
         <section id="role-section" class="hidden flex flex-col items-center">
           <div class="flex items-center justify-center gap-2 mb-2">
             <i class="ri-question-answer-line text-xl text-violet-700/80"></i>
@@ -151,7 +145,6 @@
     </main>
   </div>
 
-  <!-- 互動腳本：選心情→顯示夥伴；點夥伴（含寶寶）→ 直接跳 liff-chat.html -->
   <script>
   (function(){
     const CHAT_PAGE = "liff-chat.html";
@@ -171,6 +164,18 @@
 
     const ROLE_TO_BOT = { calm: "penny", baby: "baobao" };
 
+    // 產生 / 取得一個穩定的 user_id（若第二頁在 LIFF 內登入，會再覆寫為 LINE userId）
+    function ensureUserId(){
+      const KEY = "user_id";
+      let uid = localStorage.getItem(KEY) || sessionStorage.getItem(KEY);
+      if (!uid) {
+        uid = (crypto?.randomUUID?.() || ("anon_" + Date.now().toString(36) + Math.random().toString(36).slice(2)));
+        try { localStorage.setItem(KEY, uid); sessionStorage.setItem(KEY, uid); } catch(e){}
+      }
+      return uid;
+    }
+    const userId = ensureUserId();
+
     function setSelected(list, target) {
       list.forEach(btn => {
         const sel = btn === target;
@@ -188,9 +193,13 @@
     }
     function saveAndGo() {
       try {
+        sessionStorage.setItem("user_id", userId);   // ← 追加：保存 user_id
+        localStorage.setItem("user_id", userId);
+
         sessionStorage.setItem("mood", mood);
         sessionStorage.setItem("moodLabel", moodLabel || mood);
         sessionStorage.setItem("bot", bot);
+
         localStorage.setItem("mood", mood);
         localStorage.setItem("moodLabel", moodLabel || mood);
         localStorage.setItem("bot", bot);
@@ -205,7 +214,7 @@
       mood = t.dataset.mood || null;
       moodLabel = (t.querySelector("span")?.textContent || "").trim() || mood;
       setSelected(moodButtons, t);
-      showRole();  // 選心情後立刻進第二步
+      showRole();
     }
 
     function onRolePress(e) {
@@ -213,11 +222,8 @@
       if (!t) return;
       e.preventDefault();
       const role = t.dataset.role;
-      bot = ROLE_TO_BOT[role] || role;
-
+      bot = ROLE_TO_BOT[role] || role; // penny / baobao
       setSelected(roleButtons, t);
-
-      // 需求：點「寶寶 bot」就直接跳第二頁；冷靜思考 bot 也一併支援
       if (mood && bot) saveAndGo();
     }
 
@@ -227,7 +233,6 @@
     });
     backBtn?.addEventListener("click", showMood);
 
-    // 主題切換（保留 B 的行為）
     (function initTheme(){
       const saved = localStorage.getItem("theme");
       if (saved === "dark") document.documentElement.classList.add("dark");
@@ -250,3 +255,4 @@
   </script>
 </body>
 </html>
+
