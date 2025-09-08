@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LIFF Chat (Lite)</title>
+  <style>
+    :root { --bg:#f7f7f8; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#16a34a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC"; background:var(--bg); color:var(--text); }
+    #notice, #loginTip { max-width:720px; margin: 20px auto; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:none; }
+    #log { position: fixed; left:0; right:0; bottom:0; background:#e2e8f0; border-top:1px solid #cbd5e1; font-size:12px; padding:8px 12px; max-height:160px; overflow:auto; display:none; }
+    .btn { appearance:none; border:1px solid var(--border); background:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; }
+    .btn.primary { background:var(--primary); color:#fff; border-color:#10b981; }
+  </style>
+</head>
+<body>
+  <div id="notice"></div>
+  <div id="loginTip">
+    <div style="font-weight:600; margin-bottom:6px;">為了保存你的對話與偏好，建議登入 LINE</div>
+    <div style="color:#374151; margin-bottom:10px;">先不登入也能聊，稍後隨時可登入以綁定你的紀錄。</div>
+    <button id="loginBtn" class="btn primary">以 LINE 登入</button>
+  </div>
+  <div id="log"></div>
+
+  <!-- Flowise Embed（ES Module 版） -->
+  <script type="module">
+    import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js";
+
+    // ======= 可選 LIFF、預設不啟用 =======
+    const LIFF_ID = "2007994605-MQ7wrXWZ"; // 正確的 LIFF ID（僅當 ?liff=1 時會使用）
+    const enableLiff = new URLSearchParams(location.search).get("liff") === "1";
+    // ====================================
+
+    const CHATFLOW_ID = "5e9d71c8-1905-4583-845b-3dfe3b5f4106";
+    const FLOWISE_API = "https://cloud.flowiseai.com";
+
+    const qs = new URLSearchParams(location.search);
+    const showLog = qs.get("debug") === "1";
+    const $log = document.getElementById("log");
+    const log = (...args) => {
+      if (!showLog) return;
+      $log.style.display = "block";
+      const line = document.createElement("div");
+      line.textContent = args.map(x => typeof x === "object" ? JSON.stringify(x) : String(x)).join(" ");
+      $log.appendChild(line);
+      $log.scrollTop = $log.scrollHeight;
+    };
+    window.onerror = (m, s, l, c) => log("window.onerror:", m, "@", s, l, c);
+
+    function getState(){
+      let mood = localStorage.getItem("mood") || sessionStorage.getItem("mood") || "🙂";
+      let bot  = (localStorage.getItem("bot")  || sessionStorage.getItem("bot")  || "").toLowerCase();
+      try {
+        localStorage.setItem("mood", mood);
+        localStorage.setItem("bot", bot);
+        sessionStorage.setItem("mood", mood);
+        sessionStorage.setItem("bot", bot);
+      } catch (e) {}
+      return { mood, bot };
+    }
+    const state = getState();
+    log("state", state);
+
+    const $notice = document.getElementById("notice");
+    if (state.bot && state.bot !== "baobao") {
+      $notice.style.display = "block";
+      $notice.innerHTML = `
+        <h3 style="margin:0 0 8px;">你選的是「裴妮」</h3>
+        <p style="margin:0 0 8px; color:#374151">目前只有「寶包」支援這個聊天頁。你可以：</p>
+        <ul style="margin:0 0 8px 20px; color:#374151">
+          <li>返回上一頁重新選擇「寶包」</li>
+          <li>或前往裴妮的專屬頁（之後可補連結）</li>
+        </ul>
+        <button id="back" class="btn">返回</button>
+      `;
+      document.getElementById("back").addEventListener("click", ()=>history.back());
+    }
+
+    function startFlowise(sessionId){
+      const opener = state.bot === "baobao";
+      if (!opener) return;
+      log("Chatbot.init", { chatflowid: CHATFLOW_ID, apiHost: FLOWISE_API, sessionId, mood: state.mood, enableLiff });
+      Chatbot.init({
+        chatflowid: CHATFLOW_ID,
+        apiHost: FLOWISE_API,
+        chatflowConfig: sessionId ? { sessionId } : {},
+        theme: {
+          chatWindow: {
+            title: `寶包 · 今天的心情 ${state.mood}`,
+            welcomeMessage: `先記下你今天的心情 ${state.mood} 。想從哪裡開始聊呢？`
+          }
+        }
+      });
+    }
+
+    async function boot(){
+      if (!enableLiff){
+        log("LIFF disabled (default). Running anonymous.");
+        startFlowise(`anon_${Date.now()}`);
+        return;
+      }
+      // 動態載入 LIFF SDK（只有在 ?liff=1 時）
+      log("loading LIFF SDK...");
+      const s = document.createElement("script");
+      s.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
+      s.onload = async () => {
+        try {
+          log("init LIFF...");
+          await liff.init({ liffId: LIFF_ID });
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            startFlowise(`line_${profile.userId}`);
+          } else {
+            startFlowise(`anon_${Date.now()}`);
+            const tip = document.getElementById("loginTip");
+            const btn = document.getElementById("loginBtn");
+            tip.style.display = "block";
+            btn.onclick = () => liff.login();
+          }
+        } catch (err) {
+          log("LIFF init error:", err?.message || err);
+          startFlowise(`anon_${Date.now()}`);
+        }
+      };
+      s.onerror = () => {
+        log("LIFF SDK load error");
+        startFlowise(`anon_${Date.now()}`);
+      };
+      document.head.appendChild(s);
+    }
+
+    boot();
+  </script>
+</body>
+</html>

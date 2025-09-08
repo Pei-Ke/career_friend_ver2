@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>今天的心情？｜選擇聊天夥伴</title>
+  <!-- Tailwind (for B 視覺) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Remixicon -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet"/>
+
+  <style>
+    :root { --card-bg: rgba(255,255,255,.8); }
+    html, body { height:100%; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
+    /* 背景雲朵（簡化版，若你已有 css/styles.css 也可移除這段） */
+    .cloud { position:absolute; inset:auto; bottom:15%; width:200px; height:60px; background:rgba(255,255,255,.6); filter: blur(2px); border-radius:9999px; box-shadow: 40px 20px 0 10px rgba(255,255,255,.5); }
+    .cloud-1 { left:5%; animation: drift 40s linear infinite; }
+    .cloud-2 { left:35%; animation: drift 55s linear infinite reverse; }
+    .cloud-3 { left:65%; animation: drift 48s linear infinite; }
+    @keyframes drift { 0%{ transform: translateX(-10vw);} 100%{ transform: translateX(20vw);} }
+
+    /* B 的按鈕樣式（以 utility 為主，這裡做一點 semantic class） */
+    .mood-btn, .role-card { display:flex; align-items:center; gap:.75rem; padding: .875rem 1rem; background: rgba(255,255,255,.9); border-radius: 1rem; border:1px solid rgba(15,23,42,.08); box-shadow: 0 4px 14px rgba(2,6,23,.06); transition: transform .06s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease; }
+    .mood-btn:active, .role-card:active { transform: scale(.98); }
+    .mood-btn.sel, .role-card.sel { outline: 2px solid #7c3aed; background: #faf5ff; border-color: #e9d5ff; }
+
+    /* 卡片進出場 */
+    .screen { position:relative; }
+    .screen-panel { position:absolute; inset:0; transition: opacity .25s ease, transform .25s ease; }
+    .screen-panel.hidden { opacity:0; pointer-events:none; transform: translateY(6px); }
+    .screen-panel.visible { opacity:1; pointer-events:auto; transform: translateY(0); }
+
+    /* sticky footer（開始聊天） */
+    .footer { position: sticky; bottom: 0; background: linear-gradient(180deg, transparent 0, rgba(255,255,255,.92) 18px); padding-top: 16px; }
+    .primary { width:100%; background:#7c3aed; color:#fff; font-weight:700; height:48px; border-radius:12px; font-size:16px; opacity:.95; border:none; }
+    .primary:disabled { opacity:.45; }
+
+    /* 暗色主題（簡單切換） */
+    .dark body { color: #e5e7eb; }
+    .dark #main-card { background: rgba(2,6,23,.7); }
+    .dark .mood-btn, .dark .role-card { background: rgba(30,41,59,.7); border-color: rgba(148,163,184,.2); }
+    .dark .mood-btn.sel, .dark .role-card.sel { background: rgba(67, 56, 202, .25); border-color: rgba(99,102,241,.45); }
+    .dark .footer { background: linear-gradient(180deg, transparent 0, rgba(2,6,23,.92) 18px); }
+  </style>
+</head>
+<body class="relative flex items-end justify-center min-h-screen bg-gradient-to-b from-violet-100 via-indigo-100 to-white">
+  <!-- 背景元素 -->
+  <div class="absolute inset-0 z-0 pointer-events-none">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+  </div>
+  <button id="theme-toggle" class="absolute top-6 right-6 w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 z-10">
+    <i id="theme-icon" class="ri-moon-clear-fill text-2xl text-violet-600 transition-all duration-500 ease-in-out"></i>
+  </button>
+
+  <!-- 主要內容卡片（B 視覺） -->
+  <main id="main-card" class="bg-white/80 backdrop-blur-xl w-full max-w-md rounded-t-3xl shadow-2xl p-6 sm:p-8 z-10">
+    <div class="screen">
+      <!-- Step 1: 選擇心情 -->
+      <section id="mood-section" class="screen-panel visible flex flex-col items-center" aria-labelledby="mood-title">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <i class="ri-sun-line text-xl text-violet-700/80"></i>
+          <h1 class="text-xl font-semibold text-violet-700/80">每日心情紀錄</h1>
+        </div>
+        <h2 id="mood-title" class="text-2xl font-semibold text-slate-800 mb-6 tracking-wide">今天感覺如何？</h2>
+
+        <p class="text-slate-500 text-sm w-full mb-3">點一下選擇一個最接近你現在的心情。</p>
+        <div class="space-y-4 w-full select-none" id="mood-grid">
+          <div class="grid grid-cols-2 gap-4">
+            <button type="button" class="mood-btn" data-mood="great" aria-pressed="false"><img class="w-12" src="img/great.png" alt="很棒"><span class="font-medium text-slate-700">很棒</span></button>
+            <button type="button" class="mood-btn" data-mood="good" aria-pressed="false"><img class="w-12" src="img/happy.png" alt="不錯"><span class="font-medium text-slate-700">不錯</span></button>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <button type="button" class="mood-btn" data-mood="okay" aria-pressed="false"><img class="w-12" src="img/not-great.png" alt="還好"><span class="font-medium text-slate-700">還好</span></button>
+            <button type="button" class="mood-btn" data-mood="not-great" aria-pressed="false"><img class="w-12" src="img/sad.png" alt="不太好"><span class="font-medium text-slate-700">不太好</span></button>
+          </div>
+          <button type="button" class="mood-btn w-full" data-mood="bad" aria-pressed="false"><img class="w-12" src="img/bad.png" alt="很糟"><span class="font-medium text-slate-700">很糟</span></button>
+        </div>
+      </section>
+
+      <!-- Step 2: 選擇聊天夥伴 -->
+      <section id="role-section" class="screen-panel hidden flex flex-col items-center" aria-labelledby="bot-title">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <i class="ri-question-answer-line text-xl text-violet-700/80"></i>
+          <h1 class="text-xl font-semibold text-violet-700/80">選擇一位夥伴</h1>
+        </div>
+        <h2 id="bot-title" class="text-2xl font-semibold text-slate-800 mb-6 tracking-wide">想跟誰聊聊呢？</h2>
+
+        <div class="space-y-4 w-full select-none" id="bot-row">
+          <!-- 對齊 A 的 bot 值：calm → penny、baby → baobao -->
+          <button type="button" class="role-card" data-role="calm" data-bot="penny" aria-pressed="false">
+            <img class="w-12" src="img/calm.png" alt="裴妮">
+            <div class="text-left">
+              <h3 class="font-bold text-slate-800">裴妮</h3>
+              <p class="text-sm text-slate-500">理性分析</p>
+            </div>
+          </button>
+          <button type="button" class="role-card" data-role="baby" data-bot="baobao" aria-pressed="false">
+            <img class="w-12" src="img/baby.png" alt="寶包">
+            <div class="text-left">
+              <h3 class="font-bold text-slate-800">寶包</h3>
+              <p class="text-sm text-slate-500">溫暖陪伴</p>
+            </div>
+          </button>
+
+          <div class="mt-4 grid grid-cols-2 gap-3 footer">
+            <button id="back-btn" type="button" class="h-12 flex items-center justify-center gap-2 p-4 rounded-xl bg-slate-200/80 hover:bg-slate-300/80 transition-colors">
+              <i class="ri-arrow-left-line"></i>
+              <span class="font-medium text-slate-700">返回</span>
+            </button>
+            <button id="go" type="button" class="primary h-12 rounded-xl" disabled>開始聊天</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 簡易 log（除錯用，可移除） -->
+    <pre id="log" class="text-xs text-slate-500 mt-3 whitespace-pre-wrap"></pre>
+  </main>
+
+  <script>
+    // === 設定 ===
+    const CHAT_PAGE = "liff-chat.html"; // 與需求一致
+
+    // === DOM 參照 ===
+    const $log = document.getElementById('log');
+    const themeBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+
+    const moodSection = document.getElementById('mood-section');
+    const roleSection = document.getElementById('role-section');
+
+    const moodGrid = document.getElementById('mood-grid');
+    const botRow = document.getElementById('bot-row');
+
+    const backBtn = document.getElementById('back-btn');
+    const goBtn = document.getElementById('go');
+
+    // === 狀態 ===
+    let mood = null; // 例如 great / good / okay / not-great / bad
+    let moodLabel = null; // 例如 很棒 / 不錯 / ...
+    let bot = null; // penny / baobao（沿用 A 的值以利相容下頁）
+
+    function log(){
+      try { $log.textContent += Array.from(arguments).join(' ') + "\n"; } catch (e) {}
+    }
+
+    function selectSingle(container, selector, selectedEl){
+      container.querySelectorAll(selector).forEach(btn => {
+        const sel = (btn === selectedEl);
+        btn.classList.toggle('sel', sel);
+        btn.setAttribute('aria-pressed', sel ? 'true' : 'false');
+      });
+    }
+
+    function showPanel(which){
+      if (which === 'mood'){
+        moodSection.classList.remove('hidden');
+        moodSection.classList.add('visible');
+        roleSection.classList.remove('visible');
+        roleSection.classList.add('hidden');
+      } else {
+        roleSection.classList.remove('hidden');
+        roleSection.classList.add('visible');
+        moodSection.classList.remove('visible');
+        moodSection.classList.add('hidden');
+      }
+    }
+
+    function updateGo(){
+      goBtn.disabled = !(mood && bot);
+    }
+
+    // === 事件：主題切換 ===
+    (function initTheme(){
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.documentElement.classList.add('dark');
+      themeIcon.className = document.documentElement.classList.contains('dark') ? 'ri-sun-fill text-2xl text-yellow-400' : 'ri-moon-clear-fill text-2xl text-violet-600';
+    })();
+
+    themeBtn.addEventListener('click', () => {
+      const root = document.documentElement;
+      root.classList.toggle('dark');
+      const dark = root.classList.contains('dark');
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+      themeIcon.className = dark ? 'ri-sun-fill text-2xl text-yellow-400' : 'ri-moon-clear-fill text-2xl text-violet-600';
+    });
+
+    // === 事件：選心情（點擊或 touchend） ===
+    function onMoodPress(e){
+      const t = (e.target.closest && e.target.closest('button.mood-btn')) || null;
+      if (!t) return;
+      e.preventDefault();
+      mood = t.dataset.mood || null;
+      const labelEl = t.querySelector('span');
+      moodLabel = labelEl ? labelEl.textContent.trim() : mood;
+      selectSingle(moodGrid, '.mood-btn', t);
+      log('選到心情:', mood, moodLabel);
+
+      // 立即跳到第二步
+      showPanel('role');
+      updateGo();
+    }
+    moodGrid.addEventListener('click', onMoodPress, {passive:false});
+    moodGrid.addEventListener('touchend', onMoodPress, {passive:false});
+
+    // === 事件：選 bot ===
+    function onBotPress(e){
+      const t = (e.target.closest && e.target.closest('button.role-card')) || null;
+      if (!t) return;
+      e.preventDefault();
+      bot = t.dataset.bot || null; // penny / baobao
+      selectSingle(botRow, '.role-card', t);
+      log('選到聊天夥伴:', bot);
+      updateGo();
+    }
+    botRow.addEventListener('click', onBotPress, {passive:false});
+    botRow.addEventListener('touchend', onBotPress, {passive:false});
+
+    // === 返回 ===
+    backBtn.addEventListener('click', () => {
+      showPanel('mood');
+    });
+
+    // === 前往聊天 ===
+    goBtn.addEventListener('click', () => {
+      try {
+        // 與 A 相容的儲存鍵
+        sessionStorage.setItem('mood', mood);
+        sessionStorage.setItem('moodLabel', moodLabel);
+        sessionStorage.setItem('bot', bot);
+        localStorage.setItem('mood', mood);
+        localStorage.setItem('moodLabel', moodLabel);
+        localStorage.setItem('bot', bot);
+      } catch (e) {}
+
+      const to = `${CHAT_PAGE}?from=mood`;
+      log('前往：', to);
+      location.href = to;
+    });
+  </script>
+</body>
+</html>

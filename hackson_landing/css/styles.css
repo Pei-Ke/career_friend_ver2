@@ -1,0 +1,116 @@
+body {
+    font-family: 'Poppins', 'Noto Sans TC', sans-serif;
+    background: linear-gradient(180deg, #D6E0FF 0%, #EBC2E1 100%);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.5s ease-in-out;
+}
+
+.cloud {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    filter: blur(10px);
+    opacity: 0.8;
+    animation: drift 60s infinite linear;
+    transition: background 0.5s ease-in-out, filter 0.5s ease-in-out;
+}
+
+.cloud-1 { 
+    width: 200px; 
+    height: 60px; 
+    top: 10%; 
+    left: -10%; 
+    animation-duration: 70s; 
+}
+
+.cloud-2 { 
+    width: 300px; 
+    height: 90px; 
+    top: 20%; 
+    right: -15%; 
+    animation-duration: 80s; 
+    animation-delay: -10s; 
+}
+
+.cloud-3 { 
+    width: 250px; 
+    height: 70px; 
+    top: 35%; 
+    left: 10%; 
+    animation-duration: 60s; 
+    animation-delay: -20s;
+}
+
+@keyframes drift {
+    from { transform: translateX(-150px); }
+    to { transform: translateX(100vw); }
+}
+
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(15px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+@keyframes fadeOut { 
+    from { opacity: 1; transform: translateY(0); } 
+    to { opacity: 0; transform: translateY(-15px); } 
+}
+
+.fade-in { animation: fadeIn 0.5s ease-out forwards; }
+.fade-out { animation: fadeOut 0.5s ease-out forwards; }
+
+/* 按鈕點擊效果 */
+.mood-btn:active, .role-card:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+}
+
+.mood-btn.selected {
+    background-color: #E9E7FF;
+    border-color: #6D28D9;
+}
+
+/* Dark Mode Styles */
+.dark body {
+    background: linear-gradient(180deg, #1A202C 0%, #2D3748 100%);
+}
+
+.dark .cloud {
+    background: rgba(255, 255, 255, 0.1);
+    filter: blur(15px);
+}
+
+.dark #main-card {
+    background: rgba(45, 55, 72, 0.8);
+}
+
+.dark h1, .dark h3 {
+    color: #A0AEC0;
+}
+
+.dark h2, .dark .font-medium, .dark .role-card p {
+     color: #E2E8F0;
+}
+
+.dark .mood-btn, .dark .role-card, .dark #back-btn {
+    background-color: rgba(74, 85, 104, 0.6);
+}
+
+.dark .mood-btn:hover, .dark .role-card:hover, .dark #back-btn:hover {
+    background-color: rgba(113, 128, 150, 0.6);
+}
+
+.dark .mood-btn.selected {
+    background-color: #4C51BF;
+    border-color: #818CF8;
+}
+
+.dark #theme-toggle {
+    background-color: rgba(74, 85, 104, 0.8);
+}
+
+.dark #theme-icon {
+    color: #FBBF24;
+    transform: rotate(180deg);
+}
