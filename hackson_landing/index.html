@@ -204,7 +204,8 @@
         localStorage.setItem("moodLabel", moodLabel || mood);
         localStorage.setItem("bot", bot);
       } catch (e) {}
-      location.href = `${CHAT_PAGE}?from=mood`;
+      const isLineApp = /Line/i.test(navigator.userAgent);
+      location.href = `${CHAT_PAGE}?from=mood${isLineApp ? '&liff=1' : ''}`;
     }
 
     function onMoodPress(e) {
