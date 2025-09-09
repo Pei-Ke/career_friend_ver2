@@ -82,13 +82,13 @@
       Chatbot.initFull({
         chatflowid: AGENTFLOW_ID,
         apiHost: FLOWISE_API,
-        vars: {
-          selectedBot: bot,
-          userMood: mood,
-          userId: user_id
-        },
         chatflowConfig: {
           sessionId,
+          vars: {
+            selectedBot: bot,
+            userMood: mood,
+            userId: user_id
+          },
         },
         observersConfig: {
           /* 可在這裡添加觀察者設定 */
