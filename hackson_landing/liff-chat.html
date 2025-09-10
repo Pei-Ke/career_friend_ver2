@@ -84,11 +84,11 @@
         apiHost: FLOWISE_API,
         chatflowConfig: {
           sessionId,
-          vars: {
-            selectedBot: bot,
-            userMood: mood,
-            userId: user_id
-          }
+          startState: [
+            { key: 'selectedBot', value: bot },
+            { key: 'userMood',   value: mood },
+            { key: 'userId',     value: user_id }
+          ]
         },
         observersConfig: {
           /* 可在這裡添加觀察者設定 */
