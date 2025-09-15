@@ -73,11 +73,13 @@
         let bot_name = "寶寶";
         welcomeMessage = `哈囉～我是你的小夥伴 ${bot_name}！剛剛記下你的心情了，今天我們要聊些什麼呢？`;
         title = `${bot_name}`;
+        let titleAvatarSrc = 'https://cfedmbn.learnin.work/bauer/hackson/img/baby.png';
         
       } else if (bot == "penny") {
         let bot_name = "冷靜派";
         title = `${bot_name}`;
         welcomeMessage = `你好，我是 ${bot_name}，剛剛記下你的心情了，今天我們要聊些什麼呢？`;
+        let titleAvatarSrc = 'https://cfedmbn.learnin.work/bauer/hackson/img/calm.png';
       }
 
       // ★ 改為使用 initFull 進行全頁面聊天
@@ -136,7 +138,7 @@
                 showTitle: true,
                 showAgentMessages: false,
                 title: title,
-                titleAvatarSrc: 'https://cfedmbn.learnin.work/bauer/hackson/img/baby.png',
+                titleAvatarSrc: titleAvatarSrc,
                 welcomeMessage: welcomeMessage,
                 errorMessage: '這是一個錯誤的訊息！',
                 backgroundColor: '#ffffff',
