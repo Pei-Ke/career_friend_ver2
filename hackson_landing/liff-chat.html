@@ -65,6 +65,7 @@
       if (API_KEY) headers["Authorization"] = "Bearer " + API_KEY;
 
       // 根據心情和機器人類型調整歡迎訊息
+      let titleAvatarSrc;
       let welcomeMessage = "哈囉～今天想聊些什麼？";
       let title = "AI 助手";
 
@@ -73,13 +74,13 @@
         let bot_name = "寶寶";
         welcomeMessage = `哈囉～我是你的小夥伴 ${bot_name}！剛剛記下你的心情了，今天我們要聊些什麼呢？`;
         title = `${bot_name}`;
-        let titleAvatarSrc = 'https://cfedmbn.learnin.work/bauer/hackson/img/baby.png';
+        titleAvatarSrc = "https://cfedmbn.learnin.work/bauer/hackson/img/baby.png";
         
       } else if (bot == "penny") {
         let bot_name = "冷靜派";
         title = `${bot_name}`;
         welcomeMessage = `你好，我是 ${bot_name}，剛剛記下你的心情了，今天我們要聊些什麼呢？`;
-        let titleAvatarSrc = 'https://cfedmbn.learnin.work/bauer/hackson/img/calm.png';
+        titleAvatarSrc = "https://cfedmbn.learnin.work/bauer/hackson/img/calm.png";
       }
 
       // ★ 改為使用 initFull 進行全頁面聊天
