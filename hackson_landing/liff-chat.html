@@ -67,13 +67,17 @@
       // 根據心情和機器人類型調整歡迎訊息
       let welcomeMessage = "哈囉～今天想聊些什麼？";
       let title = "AI 助手";
+
       
-      if (mood && bot) {
-        welcomeMessage = `嗨${user_id ? "，" + user_id : ""}，我是 ${bot || "助手"}。先記下你今天的心情：${mood}。想從哪裡開始聊呢？`;
-        title = `${bot} - 今天的心情 ${mood}`;
-      } else if (mood) {
-        title = `今天的心情 ${mood}`;
-        welcomeMessage = `今天的心情：${mood}。想聊些什麼呢？`;
+      if (bot == "baobao") {
+        bot_name = "寶寶";
+        welcomeMessage = `哈囉～我是你的小夥伴 ${bot_name}！剛剛記下你的心情了，今天我們要聊些什麼呢？`;
+        title = bot_name;
+        
+      } else if (bot == "penny") {
+        bot_name = "冷靜派"
+        title = bot_name;
+        welcomeMessage = `你好，我是 ${bot_name}，剛剛記下你的心情了，今天我們要聊些什麼呢？`;
       }
 
       // ★ 改為使用 initFull 進行全頁面聊天
@@ -131,7 +135,7 @@
             
                 showTitle: true,
                 showAgentMessages: false,
-                title: '職場心友',
+                title: title,
                 titleAvatarSrc: 'https://cfedmbn.learnin.work/bauer/hackson/img/baby.png',
                 welcomeMessage: welcomeMessage,
                 errorMessage: '這是一個錯誤的訊息！',
@@ -141,8 +145,8 @@
                 width: '100%',
                 fontSize: 16,
                 starterPrompts: [
-                    "寶寶可以幫我做什麼?",
-                    "寶寶分享職涯文章"
+                    "你可以幫我做什麼?",
+                    "隨機分享職涯文章"
                 ],
             starterPromptFontSize: 15,
             clearChatOnReload: false,
